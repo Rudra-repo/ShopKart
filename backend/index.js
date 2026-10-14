@@ -20,7 +20,6 @@ const app = express();
 app.use(
   cors({
     origin: function (origin, callback) {
-      // In production and dev, allow credentials
       callback(null, true);
     },
     credentials: true,
@@ -37,52 +36,70 @@ let isConnecting = false;
 
 const connectDB = async () => {
   if (mongoose.connection.readyState >= 1) {
-    return;
+    return true;
   }
   if (isConnecting) {
-    return;
+    return false;
   }
   try {
     isConnecting = true;
-    await mongoose.connect(MONGO_URI);
+    await mongoose.connect(MONGO_URI, {
+      serverSelectionTimeoutMS: 5000,
+    });
     console.log("MongoDB connected");
+    return true;
   } catch (error) {
     console.error("MongoDB connection failed:", error.message);
+    return false;
   } finally {
     isConnecting = false;
   }
 };
 
-// Ensure database connection before processing API routes
+// Database connection middleware with clear diagnostic feedback
 app.use(async (req, res, next) => {
+  // Allow health check / root routes through even if database is connecting
+  if (
+    req.path === "/" ||
+    req.path === "/api" ||
+    req.path === "/health" ||
+    req.path === "/api/health"
+  ) {
+    return next();
+  }
+
   await connectDB();
+
+  if (mongoose.connection.readyState < 1) {
+    return res.status(503).json({
+      success: false,
+      message:
+        "Database connection unavailable. If you deployed to Vercel, please ensure MONGO_URI is set to your MongoDB Atlas cloud URI in Vercel Project Settings > Environment Variables (cloud servers cannot reach 127.0.0.1).",
+    });
+  }
   next();
 });
 
-// Routes (mounted at both / and /api for seamless local dev & Vercel serverless functions)
-app.use("/api/customers", customerRoutes);
-app.use("/customers", customerRoutes);
+// Unified API Router (handles routes whether /api prefix is present or stripped by Vercel rewrites)
+const apiRouter = express.Router();
+apiRouter.use("/customers", customerRoutes);
+apiRouter.use("/products", productRoutes);
+apiRouter.use("/wishlist", wishlistRoutes);
+apiRouter.use("/cart", cartRoutes);
+apiRouter.use("/orders", orderRoutes);
 
-app.use("/api/products", productRoutes);
-app.use("/products", productRoutes);
-
-app.use("/api/wishlist", wishlistRoutes);
-app.use("/wishlist", wishlistRoutes);
-
-app.use("/api/cart", cartRoutes);
-app.use("/cart", cartRoutes);
-
-app.use("/api/orders", orderRoutes);
-app.use("/orders", orderRoutes);
-
-// Health check route
-app.get(["/", "/api"], (req, res) => {
+apiRouter.get(["/", "/health"], (req, res) => {
   res.json({
     success: true,
     message: "ShopKart API is running",
     environment: process.env.NODE_ENV || "development",
+    database: mongoose.connection.readyState >= 1 ? "connected" : "disconnected",
   });
 });
+
+// Mount on both /api and root /
+app.use("/api", apiRouter);
+app.use("/", apiRouter);
 
 const PORT = process.env.PORT || 8082;
 
