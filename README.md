@@ -28,3 +28,23 @@ A modern, responsive e-commerce web application with a luxury monochrome theme, 
    ```bash
    npm run dev
    ```
+
+## Deploying to Vercel
+
+ShopKart is pre-configured for fullstack deployment on [Vercel](https://vercel.com):
+
+1. **Push your code to GitHub** (already done if tracking `Rudra-repo/ShopKart`).
+2. Go to [vercel.com/new](https://vercel.com/new) and import your `ShopKart` repository.
+3. Keep default settings:
+   - **Framework Preset**: Vite
+   - **Root Directory**: `./`
+   - **Build Command**: `vite build`
+   - **Output Directory**: `dist`
+4. In the **Environment Variables** section on Vercel, add:
+   - `MONGO_URI`: Your MongoDB Atlas connection string (`mongodb+srv://...`)
+   - `JWT_SECRET`: Any secure random secret
+   - `RAZORPAY_KEY_ID`: Your Razorpay Test Key ID
+   - `RAZORPAY_KEY_SECRET`: Your Razorpay Test Key Secret
+   - `NODE_ENV`: `production`
+5. Click **Deploy**. Vercel will build your frontend and deploy your serverless API under the same domain.
+

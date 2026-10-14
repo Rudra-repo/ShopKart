@@ -1,8 +1,22 @@
 import axios from "axios";
 
-// Create an Axios instance with base URL and cookie credentials enabled
+// Determine API Base URL:
+// - In Vercel production: relative "/api" (same origin)
+// - If VITE_API_URL env var is provided: use VITE_API_URL
+// - In local dev: default to "http://localhost:8082"
+const getBaseURL = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL.replace(/\/$/, "");
+  }
+  if (import.meta.env.PROD) {
+    return "/api";
+  }
+  return "http://localhost:8082";
+};
+
+// Create an Axios instance with dynamic base URL and cookie credentials enabled
 const api = axios.create({
-  baseURL: "http://localhost:8082",
+  baseURL: getBaseURL(),
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
