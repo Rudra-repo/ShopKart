@@ -37,7 +37,10 @@ const Products = () => {
       setProducts(data.products || []);
     } catch (err) {
       console.error("Fetch products error:", err);
-      setError("Something went wrong while loading products. Please check server connection.");
+      setError(
+        err.response?.data?.message ||
+          "Something went wrong while loading products. Please check server connection."
+      );
     } finally {
       setLoading(false);
     }
