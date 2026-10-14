@@ -1,4 +1,4 @@
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const Customer = require("../models/customer.model");
 const generateToken = require("../utils/generateToken");
 
@@ -157,6 +157,7 @@ const loginCustomer = async (req, res) => {
         email: customer.email,
         phone: customer.phone,
       },
+      token,
     });
   } catch (error) {
     console.error("Login Error:", error);

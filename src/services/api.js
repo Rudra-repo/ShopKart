@@ -23,6 +23,15 @@ const api = axios.create({
   },
 });
 
+// Attach Bearer token from localStorage as fallback when cookies are restricted
+api.interceptors.request.use((config) => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("shopkart_token") : null;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // AUTH SERVICES
 export const registerCustomer = async (customerData) => {
   const response = await api.post("/customers/register", customerData);
@@ -31,6 +40,9 @@ export const registerCustomer = async (customerData) => {
 
 export const loginCustomer = async (credentials) => {
   const response = await api.post("/customers/login", credentials);
+  if (response.data?.token) {
+    localStorage.setItem("shopkart_token", response.data.token);
+  }
   return response.data;
 };
 
@@ -40,6 +52,7 @@ export const getMyProfile = async () => {
 };
 
 export const logoutCustomer = async () => {
+  localStorage.removeItem("shopkart_token");
   const response = await api.post("/customers/logout");
   return response.data;
 };
