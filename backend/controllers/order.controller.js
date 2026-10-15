@@ -149,7 +149,7 @@ const createPaymentOrder = async (req, res) => {
       razorpayOrderId: order.razorpayOrderId,
       amount: Math.round(serverTotalAmount * 100),
       currency: "INR",
-      key,
+      key: process.env.RAZORPAY_KEY_ID || null,
       isMock,
       mockReason,
     });
@@ -225,7 +225,9 @@ const verifyPayment = async (req, res) => {
 
       isValidSignature = expectedSignature === razorpay_signature;
     } else {
-      isValidSignature = razorpay_signature === "mock_test_signature";
+      isValidSignature =
+        razorpay_signature === "mock_test_signature" ||
+        (razorpay_signature && razorpay_signature.startsWith("mock_"));
     }
 
     if (!isValidSignature) {

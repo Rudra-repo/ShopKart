@@ -132,7 +132,26 @@ ShopKart/
 
 ---
 
-### 2. Setup the Backend
+### 2. Environment Variables Configuration
+Copy the safe `.env.example` template to create your local `.env` (never commit your `.env`):
+```bash
+cp .env.example .env
+```
+
+| Variable | Description | Default / Example |
+| :--- | :--- | :--- |
+| `PORT` | Backend server port | `8082` |
+| `MONGO_URI` | MongoDB connection string | `mongodb://127.0.0.1:27017/shopkart` |
+| `JWT_SECRET` | Strong secret string used to sign JWTs | `your_super_secure_jwt_secret_here` |
+| `RAZORPAY_KEY_ID` | Razorpay API Key ID (optional for local mock) | `your_razorpay_key_id` |
+| `RAZORPAY_KEY_SECRET` | Razorpay API Secret (optional for local mock) | `your_razorpay_key_secret` |
+| `NODE_ENV` | Environment mode | `development` |
+
+> 💡 **Mock Payment Mode**: When Razorpay keys are omitted, ShopKart automatically operates in safe local mock mode, enabling seamless checkout and order placement via the built-in payment test simulator without needing live merchant credentials.
+
+---
+
+### 3. Setup the Backend
 
 Open a terminal and navigate to the `backend` directory:
 ```bash

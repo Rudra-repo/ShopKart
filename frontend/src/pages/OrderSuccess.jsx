@@ -100,7 +100,7 @@ const OrderSuccess = () => {
 
       // Launch Actual Razorpay Gateway
       const options = {
-        key: key || "rzp_test_Tnp5dB4Ut6LjAB",
+        key: key,
         amount: amount,
         currency: currency || "INR",
         name: "ShopKart",
