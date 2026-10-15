@@ -11,15 +11,16 @@ if (key_id && key_secret) {
     key_secret,
   });
 } else {
-  // Do NOT include real keys in source. When keys are missing we export a lightweight mock
-  // that throws when used - controllers already handle errors and can fallback to mock orders.
   console.warn(
-    "Razorpay keys not set. Razorpay API calls will fail fast. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in your environment for production."
+    "Razorpay keys not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in your environment for live payment processing."
   );
+
   razorpay = {
     orders: {
       create: async () => {
-        const err = new Error("Razorpay keys not configured");
+        const err = new Error(
+          "Razorpay keys are not configured. Set them in your environment before processing live payments."
+        );
         err.code = "NO_RAZORPAY_KEYS";
         throw err;
       },
