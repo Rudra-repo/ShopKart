@@ -4,7 +4,12 @@ const Customer = require("../models/customer.model");
 const protect = async (req, res, next) => {
   try {
     let token = req.cookies?.token;
-    if (!token && req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+
+    if (
+      !token &&
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer ")
+    ) {
       token = req.headers.authorization.split(" ")[1];
     }
 
@@ -15,11 +20,15 @@ const protect = async (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || "shopkart_super_secret_key_123"
-    );
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      return res.status(500).json({
+        success: false,
+        message: "Server misconfiguration: JWT_SECRET missing",
+      });
+    }
 
+    const decoded = jwt.verify(token, secret);
     const customer = await Customer.findById(decoded.id).select("-password");
 
     if (!customer) {
@@ -30,7 +39,6 @@ const protect = async (req, res, next) => {
     }
 
     req.user = customer;
-
     next();
   } catch (error) {
     return res.status(401).json({
