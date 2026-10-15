@@ -1,11 +1,17 @@
 const jwt = require("jsonwebtoken");
 
 const generateToken = (customerId) => {
+  const secret = process.env.JWT_SECRET;
+
+  if (!secret) {
+    throw new Error("Missing JWT_SECRET environment variable");
+  }
+
   return jwt.sign(
     {
       id: customerId,
     },
-    process.env.JWT_SECRET || "shopkart_super_secret_key_123",
+    secret,
     {
       expiresIn: "1d",
     }
