@@ -1,15 +1,11 @@
 import axios from "axios";
 
 // Determine API Base URL:
-// - In Vercel production: relative "/api" (same origin)
-// - If VITE_API_URL env var is provided: use VITE_API_URL
-// - In local dev: default to "http://localhost:8082"
+// - If VITE_API_URL is provided: use VITE_API_URL
+// - Default to local backend server: "http://localhost:8082"
 const getBaseURL = () => {
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL.replace(/\/$/, "");
-  }
-  if (import.meta.env.PROD) {
-    return "/api";
   }
   return "http://localhost:8082";
 };
