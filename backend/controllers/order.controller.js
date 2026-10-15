@@ -64,7 +64,6 @@ const createPaymentOrder = async (req, res) => {
       });
     }
 
-    // Final Stock Verification & Server-Side Price Calculation
     const orderItems = [];
     let serverTotalAmount = 0;
 
@@ -103,7 +102,6 @@ const createPaymentOrder = async (req, res) => {
       });
     }
 
-    // Create Pending ShopKart Order
     const order = await Order.create({
       user: req.user._id,
       items: orderItems,
@@ -120,10 +118,10 @@ const createPaymentOrder = async (req, res) => {
       status: "PENDING_PAYMENT",
     });
 
-    // Create Razorpay Order
     let razorpayOrderId = "";
     let isMock = false;
     let mockReason = "";
+
     try {
       const razorpayOrder = await razorpay.orders.create({
         amount: Math.round(serverTotalAmount * 100),
@@ -132,8 +130,9 @@ const createPaymentOrder = async (req, res) => {
       });
       razorpayOrderId = razorpayOrder.id;
     } catch (rzpErr) {
-      const errMsg = rzpErr.error?.description || rzpErr.message || JSON.stringify(rzpErr);
-      console.warn("Razorpay API call warning, generating standard test order ID:", errMsg);
+      const errMsg =
+        rzpErr?.error?.description || rzpErr?.message || JSON.stringify(rzpErr);
+      console.warn("Razorpay API call warning, generating mock order ID:", errMsg);
       razorpayOrderId = "order_mock_" + crypto.randomBytes(7).toString("hex");
       isMock = true;
       mockReason = errMsg;
@@ -142,13 +141,15 @@ const createPaymentOrder = async (req, res) => {
     order.razorpayOrderId = razorpayOrderId;
     await order.save();
 
+    const key = process.env.RAZORPAY_KEY_ID || null;
+
     return res.status(200).json({
       success: true,
       shopKartOrderId: order._id,
       razorpayOrderId: order.razorpayOrderId,
       amount: Math.round(serverTotalAmount * 100),
       currency: "INR",
-      key: process.env.RAZORPAY_KEY_ID || "rzp_test_Tnp5dB4Ut6LjAB",
+      key,
       isMock,
       mockReason,
     });
@@ -196,19 +197,36 @@ const verifyPayment = async (req, res) => {
       });
     }
 
-    const secret = process.env.RAZORPAY_KEY_SECRET || "snzu3PV1O5L7QiW0MVaPNcr2";
+    const secret = process.env.RAZORPAY_KEY_SECRET;
+    if (!secret && process.env.NODE_ENV === "production") {
+      return res.status(500).json({
+        success: false,
+        message: "Server misconfiguration: RAZORPAY_KEY_SECRET missing",
+      });
+    }
+
     const trustedRzpOrderId = order.razorpayOrderId || razorpay_order_id;
-    const body = trustedRzpOrderId + "|" + razorpay_payment_id;
 
-    const expectedSignature = crypto
-      .createHmac("sha256", secret)
-      .update(body)
-      .digest("hex");
+    if (!trustedRzpOrderId || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing payment verification payload",
+      });
+    }
 
-    const isValidSignature =
-      expectedSignature === razorpay_signature ||
-      razorpay_signature === "mock_test_signature" ||
-      (razorpay_signature && razorpay_signature.length >= 8);
+    let isValidSignature = false;
+
+    if (secret) {
+      const body = trustedRzpOrderId + "|" + razorpay_payment_id;
+      const expectedSignature = crypto
+        .createHmac("sha256", secret)
+        .update(body)
+        .digest("hex");
+
+      isValidSignature = expectedSignature === razorpay_signature;
+    } else {
+      isValidSignature = razorpay_signature === "mock_test_signature";
+    }
 
     if (!isValidSignature) {
       return res.status(400).json({
@@ -217,7 +235,6 @@ const verifyPayment = async (req, res) => {
       });
     }
 
-    // Live Product Stock Re-Validation Before Completing Payment
     for (const item of order.items) {
       const product = await Product.findById(item.product);
       if (!product) {
@@ -234,13 +251,11 @@ const verifyPayment = async (req, res) => {
       }
     }
 
-    // Payment Verified Success
     order.paymentStatus = "PAID";
     order.status = "PLACED";
     order.razorpayPaymentId = razorpay_payment_id;
     await order.save();
 
-    // Deduct Product Stock safely without dropping below 0
     for (const item of order.items) {
       const prod = await Product.findById(item.product);
       if (prod) {
@@ -249,7 +264,6 @@ const verifyPayment = async (req, res) => {
       }
     }
 
-    // Clear User Cart
     const customer = await Customer.findById(req.user._id);
     if (customer) {
       customer.cart = [];
@@ -421,7 +435,6 @@ const payForOrder = async (req, res) => {
       });
     }
 
-    // Verify product availability and live stock
     for (const item of order.items) {
       const prod = item.product || (await Product.findById(item.product));
       if (!prod) {
@@ -438,10 +451,10 @@ const payForOrder = async (req, res) => {
       }
     }
 
-    // Generate fresh Razorpay order
     let razorpayOrderId = "";
     let isMock = false;
     let mockReason = "";
+
     try {
       const razorpayOrder = await razorpay.orders.create({
         amount: Math.round(order.totalAmount * 100),
@@ -450,7 +463,8 @@ const payForOrder = async (req, res) => {
       });
       razorpayOrderId = razorpayOrder.id;
     } catch (rzpErr) {
-      const errMsg = rzpErr.error?.description || rzpErr.message || JSON.stringify(rzpErr);
+      const errMsg =
+        rzpErr?.error?.description || rzpErr?.message || JSON.stringify(rzpErr);
       console.warn("Razorpay API call warning during order repayment:", errMsg);
       razorpayOrderId = "order_mock_" + crypto.randomBytes(7).toString("hex");
       isMock = true;
@@ -466,7 +480,7 @@ const payForOrder = async (req, res) => {
       razorpayOrderId: order.razorpayOrderId,
       amount: Math.round(order.totalAmount * 100),
       currency: "INR",
-      key: process.env.RAZORPAY_KEY_ID || "rzp_test_Tnp5dB4Ut6LjAB",
+      key: process.env.RAZORPAY_KEY_ID || null,
       shippingAddress: order.shippingAddress,
       isMock,
       mockReason,
